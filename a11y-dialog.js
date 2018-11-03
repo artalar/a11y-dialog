@@ -15,7 +15,7 @@
     'video:not([tabindex^="-"]):not([inert])',
     '[contenteditable]:not([tabindex^="-"]):not([inert])',
     '[tabindex]:not([tabindex^="-"]):not([inert])'
-  ];
+  ].join(',');
   var TAB_KEY = 9;
   var ESCAPE_KEY = 27;
   var focusedBeforeDialog;
@@ -57,6 +57,7 @@
    * @return {this}
    */
   A11yDialog.prototype.create = function(targets) {
+
     // Keep a collection of nodes to disable/enable when toggling the dialog
     this._targets =
       this._targets || collect(targets) || getSiblings(this.container);
@@ -82,22 +83,18 @@
     // Keep a collection of dialog openers, each of which will be bound a click
     // event listener to open the dialog
     this._openers = $$('[data-a11y-dialog-show="' + this.container.id + '"]');
-    this._openers.forEach(
-      function(opener) {
-        opener.addEventListener('click', this._show);
-      }.bind(this)
-    );
+    for (var i = 0; i < this._openers.length; i++) {
+      this._openers[i].addEventListener('click', this._show);
+    }
 
     // Keep a collection of dialog closers, each of which will be bound a click
     // event listener to close the dialog
     this._closers = $$('[data-a11y-dialog-hide]', this.container).concat(
       $$('[data-a11y-dialog-hide="' + this.container.id + '"]')
     );
-    this._closers.forEach(
-      function(closer) {
-        closer.addEventListener('click', this._hide);
-      }.bind(this)
-    );
+    for (var i = 0; i < this._closers.length; i++) {
+      this._closers[i].addEventListener('click', this._hide);
+    }
 
     // Execute all callbacks registered for the `create` event
     this._fire('create');
@@ -133,9 +130,9 @@
 
       // Iterate over the targets to disable them by setting their `aria-hidden`
       // attribute to `true`
-      this._targets.forEach(function(target) {
-        target.setAttribute('aria-hidden', 'true');
-      });
+      for (var i = 0; i < this._targets.length; i++) {
+        this._targets[i].setAttribute('aria-hidden', 'true');
+      }
     }
 
     // Set the focus to the first focusable child of the dialog element
@@ -177,9 +174,9 @@
 
       // Iterate over the targets to enable them by remove their `aria-hidden`
       // attribute
-      this._targets.forEach(function(target) {
-        target.removeAttribute('aria-hidden');
-      });
+      for (var i = 0; i < this._targets.length; i++) {
+        this._targets[i].removeAttribute('aria-hidden');
+      }
     }
 
     // If their was a focused element before the dialog was opened, restore the
@@ -206,22 +203,19 @@
    * @return {this}
    */
   A11yDialog.prototype.destroy = function() {
+
     // Hide the dialog to avoid destroying an open instance
     this.hide();
 
     // Remove the click event listener from all dialog openers
-    this._openers.forEach(
-      function(opener) {
-        opener.removeEventListener('click', this._show);
-      }.bind(this)
-    );
+    for (var i = 0; i < this._openers.length; i++) {
+      this._openers[i].removeEventListener('click', this._show);
+    }
 
     // Remove the click event listener from all dialog closers
-    this._closers.forEach(
-      function(closer) {
-        closer.removeEventListener('click', this._hide);
-      }.bind(this)
-    );
+    for (var i = 0; i < this._closers.length; i++) {
+      this._closers[i].removeEventListener('click', this._hide);
+    }
 
     // Execute all callbacks registered for the `destroy` event
     this._fire('destroy');
@@ -273,13 +267,12 @@
    * @param {Event} event
    */
   A11yDialog.prototype._fire = function(type, event) {
+    var container = this.container;
     var listeners = this._listeners[type] || [];
 
-    listeners.forEach(
-      function(listener) {
-        listener(this.container, event);
-      }.bind(this)
-    );
+    for (var i = 0; i < listeners.length; i++) {
+      listeners[i](container, event);
+    }
   };
 
   /**
@@ -326,7 +319,11 @@
    * @return {Array<Element>}
    */
   function toArray(collection) {
-    return Array.prototype.slice.call(collection);
+    var result = new Array(collection.length);
+    for (var i = 0; i < collection.length; i++) {
+      result[i] = collection[i];
+    }
+    return result;
   }
 
   /**
@@ -369,8 +366,7 @@
    * @param {Element} node
    */
   function setFocusToFirstItem(node) {
-    var focusableChildren = getFocusableChildren(node);
-    var focused = node.querySelector('[autofocus]') || focusableChildren[0];
+    var focused = node.querySelector('[autofocus]') || getFocusableChildren(node)[0];
 
     if (focused) {
       focused.focus();
@@ -384,13 +380,21 @@
    * @return {Array<Element>}
    */
   function getFocusableChildren(node) {
-    return $$(FOCUSABLE_ELEMENTS.join(','), node).filter(function(child) {
-      return !!(
-        child.offsetWidth ||
-        child.offsetHeight ||
-        child.getClientRects().length
-      );
-    });
+    var elements = (node || document).querySelectorAll(FOCUSABLE_ELEMENTS);
+    var result = [];
+
+    for (var i = 0; i < elements.length; i++) {
+      const element = elements[i];
+      if (Boolean(
+        element.offsetWidth ||
+        element.offsetHeight ||
+        element.getClientRects().length
+      ) === true) {
+        result.push(element);
+      }
+    }
+
+    return result;
   }
 
   /**
@@ -429,11 +433,12 @@
    */
   function getSiblings(node) {
     var nodes = toArray(node.parentNode.childNodes);
-    var siblings = nodes.filter(function(node) {
-      return node.nodeType === 1;
-    });
-
-    siblings.splice(siblings.indexOf(node), 1);
+    var siblings = new Array(nodes.length);
+    for (var i = 0; i < nodes.length; i++) {
+      if (nodes[i].nodeType === 1 && nodes[i] !== node) {
+        siblings.push(nodes[i])
+      }
+    }
 
     return siblings;
   }
